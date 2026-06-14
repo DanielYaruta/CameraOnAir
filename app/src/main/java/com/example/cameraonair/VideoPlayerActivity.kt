@@ -1,6 +1,8 @@
 package com.example.cameraonair
 
+import android.content.ContentResolver
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.MediaController
 import android.widget.VideoView
@@ -22,7 +24,17 @@ class VideoPlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_player)
 
-        val uriString = intent.getStringExtra(EXTRA_VIDEO_URI) ?: run {
+        // URI передаётся как Parcelable, а не строка, чтобы исключить подстановку
+        // произвольной схемы (file://, http://) через строковый extra
+        val uri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_VIDEO_URI, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_VIDEO_URI)
+        } ?: run { finish(); return }
+
+        // Принимаем только content:// URI из MediaStore
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) {
             finish()
             return
         }
@@ -34,7 +46,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         mediaController.setAnchorView(videoView)
 
         videoView.setMediaController(mediaController)
-        videoView.setVideoURI(Uri.parse(uriString))
+        videoView.setVideoURI(uri)
         videoView.setOnPreparedListener {
             isPrepared = true
             videoView.seekTo(savedPosition)
