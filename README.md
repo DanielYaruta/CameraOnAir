@@ -25,4 +25,4 @@ Android-приложение для записи видео с помощью б
 
 ## Демонстрация
 
-[demo/demo.mp4](demo/demo.mp4)
+https://github.com/DanielYaruta/CameraOnAir/raw/main/demo/demo.mp4
