@@ -33,8 +33,6 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
@@ -47,8 +45,6 @@ class MainActivity : AppCompatActivity() {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var activeRecording: Recording? = null
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-    private lateinit var cameraExecutor: ExecutorService
 
     private val blinkHandler = Handler(Looper.getMainLooper())
     private val blinkRunnable = object : Runnable {
@@ -71,9 +67,7 @@ class MainActivity : AppCompatActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
-        if (results.all { it.value }) {
-            startCamera()
-        } else {
+        if (!results.all { it.value }) {
             Toast.makeText(this, "Разрешения необходимы для работы камеры", Toast.LENGTH_LONG).show()
         }
     }
@@ -87,8 +81,6 @@ class MainActivity : AppCompatActivity() {
         btnFlipCamera = findViewById(R.id.btnFlipCamera)
         chronometer = findViewById(R.id.chronometer)
         tvRecIndicator = findViewById(R.id.tvRecIndicator)
-
-        cameraExecutor = Executors.newSingleThreadExecutor()
 
         checkAndRequestPermissions()
 
@@ -106,14 +98,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun allPermissionsGranted() = requiredPermissions.all {
+        ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun checkAndRequestPermissions() {
         val denied = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (denied.isEmpty()) {
-            startCamera()
-            return
-        }
+        if (denied.isEmpty()) return
         if (denied.any { shouldShowRequestPermissionRationale(it) }) {
             AlertDialog.Builder(this)
                 .setTitle("Необходимы разрешения")
@@ -154,7 +147,7 @@ class MainActivity : AppCompatActivity() {
     private fun startRecording() {
         val capture = videoCapture ?: return
 
-        val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())
+        val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
             .format(System.currentTimeMillis())
 
         val contentValues = ContentValues().apply {
@@ -214,9 +207,15 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (allPermissionsGranted() && activeRecording == null) {
+            startCamera()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         blinkHandler.removeCallbacks(blinkRunnable)
-        cameraExecutor.shutdown()
     }
 }

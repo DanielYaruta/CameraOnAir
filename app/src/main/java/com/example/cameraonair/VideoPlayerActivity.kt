@@ -6,6 +6,8 @@ import android.widget.MediaController
 import android.widget.VideoView
 import androidx.appcompat.app.AppCompatActivity
 
+private const val KEY_POSITION = "video_position"
+
 class VideoPlayerActivity : AppCompatActivity() {
 
     companion object {
@@ -26,6 +28,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         }
 
         videoView = findViewById(R.id.videoView)
+        savedPosition = savedInstanceState?.getInt(KEY_POSITION) ?: 0
 
         val mediaController = MediaController(this)
         mediaController.setAnchorView(videoView)
@@ -34,8 +37,14 @@ class VideoPlayerActivity : AppCompatActivity() {
         videoView.setVideoURI(Uri.parse(uriString))
         videoView.setOnPreparedListener {
             isPrepared = true
+            videoView.seekTo(savedPosition)
             it.start()
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (isPrepared) outState.putInt(KEY_POSITION, videoView.currentPosition)
     }
 
     override fun onPause() {
