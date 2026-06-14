@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var previewView: PreviewView
     private lateinit var btnRecord: Button
     private lateinit var btnFlipCamera: Button
+    private lateinit var btnComposeDemo: Button
     private lateinit var chronometer: Chronometer
     private lateinit var tvRecIndicator: TextView
 
@@ -78,8 +79,13 @@ class MainActivity : AppCompatActivity() {
         previewView = findViewById(R.id.previewView)
         btnRecord = findViewById(R.id.btnRecord)
         btnFlipCamera = findViewById(R.id.btnFlipCamera)
+        btnComposeDemo = findViewById(R.id.btnComposeDemo)
         chronometer = findViewById(R.id.chronometer)
         tvRecIndicator = findViewById(R.id.tvRecIndicator)
+
+        btnComposeDemo.setOnClickListener {
+            startActivity(Intent(this, ComposeActivity::class.java))
+        }
 
         checkAndRequestPermissions()
 

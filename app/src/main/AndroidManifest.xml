@@ -32,6 +32,9 @@
             android:name=".VideoPlayerActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".ComposeActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
