@@ -1,14 +1,13 @@
 package com.example.cameraonair
 
 import android.Manifest
+import android.animation.ObjectAnimator
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.View
@@ -31,8 +30,8 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import java.text.SimpleDateFormat
-import java.util.Locale
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class MainActivity : AppCompatActivity() {
 
@@ -45,13 +44,13 @@ class MainActivity : AppCompatActivity() {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var activeRecording: Recording? = null
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var isCameraStarted = false
 
-    private val blinkHandler = Handler(Looper.getMainLooper())
-    private val blinkRunnable = object : Runnable {
-        override fun run() {
-            tvRecIndicator.visibility =
-                if (tvRecIndicator.visibility == View.VISIBLE) View.INVISIBLE else View.VISIBLE
-            blinkHandler.postDelayed(this, 500)
+    private val blinkAnimator by lazy {
+        ObjectAnimator.ofFloat(tvRecIndicator, "alpha", 1f, 0f).apply {
+            duration = 500
+            repeatMode = ObjectAnimator.REVERSE
+            repeatCount = ObjectAnimator.INFINITE
         }
     }
 
@@ -94,6 +93,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 CameraSelector.DEFAULT_BACK_CAMERA
             }
+            isCameraStarted = false
             startCamera()
         }
     }
@@ -138,6 +138,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture!!)
+                isCameraStarted = true
             } catch (e: Exception) {
                 Toast.makeText(this, "Не удалось запустить камеру: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -147,8 +148,8 @@ class MainActivity : AppCompatActivity() {
     private fun startRecording() {
         val capture = videoCapture ?: return
 
-        val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
-            .format(System.currentTimeMillis())
+        val timestamp = LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss"))
 
         val contentValues = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, "VID_$timestamp.mp4")
@@ -173,7 +174,8 @@ class MainActivity : AppCompatActivity() {
                         chronometer.base = SystemClock.elapsedRealtime()
                         chronometer.visibility = View.VISIBLE
                         chronometer.start()
-                        blinkHandler.post(blinkRunnable)
+                        tvRecIndicator.visibility = View.VISIBLE
+                        blinkAnimator.start()
                         btnFlipCamera.isEnabled = false
                     }
                     is VideoRecordEvent.Finalize -> {
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity() {
                         btnRecord.setText(R.string.start_recording)
                         chronometer.stop()
                         chronometer.visibility = View.GONE
-                        blinkHandler.removeCallbacks(blinkRunnable)
+                        blinkAnimator.cancel()
                         tvRecIndicator.visibility = View.GONE
                         btnFlipCamera.isEnabled = true
                         if (!event.hasError()) {
@@ -209,13 +211,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (allPermissionsGranted() && activeRecording == null) {
+        if (allPermissionsGranted() && !isCameraStarted) {
             startCamera()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        blinkHandler.removeCallbacks(blinkRunnable)
+        blinkAnimator.cancel()
     }
 }

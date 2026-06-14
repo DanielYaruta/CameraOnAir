@@ -62,4 +62,9 @@ class VideoPlayerActivity : AppCompatActivity() {
             videoView.start()
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        videoView.stopPlayback()
+    }
 }
