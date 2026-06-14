@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
@@ -83,6 +84,8 @@ class MainActivity : AppCompatActivity() {
         chronometer = findViewById(R.id.chronometer)
         tvRecIndicator = findViewById(R.id.tvRecIndicator)
 
+        btnRecord.isEnabled = false
+
         btnComposeDemo.setOnClickListener {
             startActivity(Intent(this, ComposeActivity::class.java))
         }
@@ -137,7 +140,12 @@ class MainActivity : AppCompatActivity() {
             }
 
             val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HD))
+                .setQualitySelector(
+                    QualitySelector.fromOrderedList(
+                        listOf(Quality.FHD, Quality.HD, Quality.SD, Quality.LOWEST),
+                        FallbackStrategy.lowerQualityOrHigherThan(Quality.LOWEST)
+                    )
+                )
                 .build()
             videoCapture = VideoCapture.withOutput(recorder)
 
@@ -145,7 +153,9 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture!!)
                 isCameraStarted = true
+                btnRecord.isEnabled = true
             } catch (e: Exception) {
+                btnRecord.isEnabled = false
                 Toast.makeText(this, "Не удалось запустить камеру: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(this))
@@ -196,7 +206,20 @@ class MainActivity : AppCompatActivity() {
                             Toast.makeText(this, "Видео сохранено", Toast.LENGTH_SHORT).show()
                             openVideoPlayer(event.outputResults.outputUri)
                         } else {
-                            Toast.makeText(this, "Ошибка записи: ${event.error}", Toast.LENGTH_SHORT).show()
+                            val msg = when (event.error) {
+                                VideoRecordEvent.Finalize.ERROR_NO_VALID_DATA ->
+                                    "Нет данных для записи — камера не успела инициализироваться"
+                                VideoRecordEvent.Finalize.ERROR_INSUFFICIENT_STORAGE ->
+                                    "Недостаточно места на устройстве"
+                                VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED ->
+                                    "Достигнут максимальный размер файла"
+                                VideoRecordEvent.Finalize.ERROR_SOURCE_INACTIVE ->
+                                    "Камера была отключена во время записи"
+                                VideoRecordEvent.Finalize.ERROR_ENCODING_FAILED ->
+                                    "Ошибка кодирования видео"
+                                else -> "Ошибка записи (код: ${event.error})"
+                            }
+                            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                         }
                     }
                     else -> {}
