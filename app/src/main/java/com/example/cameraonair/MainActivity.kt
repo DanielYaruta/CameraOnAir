@@ -233,7 +233,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun openVideoPlayer(uri: Uri) {
         val intent = Intent(this, VideoPlayerActivity::class.java).apply {
-            putExtra(VideoPlayerActivity.EXTRA_VIDEO_URI, uri.toString())
+            putExtra(VideoPlayerActivity.EXTRA_VIDEO_URI, uri)
         }
         startActivity(intent)
     }
